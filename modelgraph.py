@@ -37,7 +37,7 @@ def techs_and_carriers_from_set(loc_tech_carriers_set):
     return techs, carriers
 
 
-def add_tech_edges(model, G, tech):
+def add_tech_edges(model, G, tech, use_full_tech_names=False):
     carriers_in = set()
     for k, v in model._model_run.techs[tech].essentials.items():
         if "carrier_in" in k:
@@ -47,7 +47,8 @@ def add_tech_edges(model, G, tech):
     for k, v in model._model_run.techs[tech].essentials.items():
         if "carrier_out" in k:
             update_set(carriers_out, v)
-
+    if use_full_tech_names:
+        tech = model._model_data.names[tech].item()
     for c in carriers_in:
         if c in STYLES:
             G.add_edge(c, tech, **STYLES[c])
@@ -65,7 +66,8 @@ def add_tech_edges(model, G, tech):
 @click.argument("model_file")
 @click.argument("out_file")
 @click.option("--scenario", "-s", type=str, default=None)
-def model_to_graph(model_file, out_file, scenario):
+@click.option("--use_full_tech_names", "-u", type=bool, default=False)
+def model_to_graph(model_file, out_file, scenario, use_full_tech_names):
     model = calliope.Model(model_file, scenario=scenario)
 
     # Build set of all carriers and list of all techs
@@ -84,10 +86,12 @@ def model_to_graph(model_file, out_file, scenario):
 
     for tech in techs:
         tech_kind = model._model_run.techs[tech].inheritance[-1]
+        if use_full_tech_names:
+            tech = model._model_data.names[tech].item()
         G.add_node(tech, kind=tech_kind, **STYLES.get(tech_kind, STYLES["default"]))
 
     for tech in techs:
-        add_tech_edges(model, G, tech)
+        add_tech_edges(model, G, tech, use_full_tech_names)
 
     nx.drawing.nx_pydot.write_dot(G, out_file)
 
